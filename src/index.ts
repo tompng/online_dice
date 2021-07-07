@@ -145,13 +145,23 @@ class Cube {
     this.hitFloor()
   }
 
+  static faces = [
+    new Vector3(-1, 0, 0), new Vector3(1, 0, 0),
+    new Vector3(0, -1, 0), new Vector3(0, 1, 0),
+    new Vector3(0, 0, -1), new Vector3(0, 0, 1)
+  ]
   hitFloor() {
     const floorZ = -4
+    const faceDown = Cube.faces.some(n => this.rotation.transform(n).z > 0.99)
+
     Cube.coords.forEach(coord => {
       const rpos = this.rotation.transform(coord).scale(this.size)
       const point = Vector3.wsum(1, this.position, 1, rpos)
       if (point.z > floorZ) return
-      this.velocity = vectorMinus(this.velocity, 0.002)
+      if (faceDown) {
+        this.velocity = vectorMinus(this.velocity, 0.002)
+        this.momentum = vectorMinus(this.momentum, 0.002)
+      }
       const h = floorZ - point.z
       const vEnergy = this.velocity.length() ** 2 / 2
       const lossEnergy = -Gravity.z * h
@@ -218,7 +228,7 @@ function assignGlobal(data: Record<string, any>) {
 
 assignGlobal({ Matrix3, Vector3 })
 
-const cube = new Cube(new Vector3(0, 0, 2))
+const cube = new Cube(new Vector3(0, 0, 4))
 const ctx = canvas.getContext('2d')!
 setInterval(() => {
   for(let i=0;i<10;i++)cube.update(0.01)
