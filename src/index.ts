@@ -1,3 +1,5 @@
+import { CompressedTexture } from "three"
+
 const canvas = document.createElement('canvas')
 const SIZE = 512
 canvas.width = canvas.height = SIZE
@@ -7,7 +9,7 @@ class Vector3 {
   clone() {
     return new Vector3(this.x, this.y, this.z)
   }
-  mult(a: number) {
+  scale(a: number) {
     return new Vector3(a * this.x, a * this.y, a * this.z)
   }
   length() {
@@ -104,51 +106,93 @@ function randomDirection() {
   return new Vector3(r * Math.cos(th), r * Math.sin(th), z)
 }
 
+const Gravity = new Vector3(0, 0, -1)
+
 class Cube {
   position: Vector3
   velocity: Vector3
   rotation: Matrix3
   momentum: Vector3
   size = 1
+  static coords = [...new Array(8)].map((_, i) =>
+    new Vector3(
+      ((i & 1) * 2 - 1),
+      (((i >> 1) & 1) * 2 - 1),
+      (((i >> 2) & 1) * 2 - 1)
+    )
+  )
   constructor(position: Vector3) {
     this.position = position
     this.rotation = Matrix3.fromRotation(randomDirection(), 2 * Math.PI * Math.random())
+    this.rotation = new Matrix3()//Matrix3.fromRotation(randomDirection(), 2 * Math.PI * Math.random())
     // this.velocity = randomDirection()
-    // this.momentum = randomDirection()
+    this.momentum = randomDirection()
     this.velocity = new Vector3(0, 0, 0)
-    this.momentum = new Vector3(1, 0, 0)
+    // this.momentum = new Vector3(0, 0.8, 0)
   }
 
   update(dt: number) {
     this.position = Vector3.wsum(1, this.position, dt , this.velocity)
+    this.velocity = Vector3.wsum(1, this.velocity, dt, Gravity)
     const w = Matrix3.fromRotation(this.momentum, this.momentum.length() * dt)
     this.rotation = w.mult(this.rotation)
+    this.hitFloor()
+  }
+
+  hitFloor() {
+    const floorZ = -4
+    Cube.coords.forEach(coord => {
+      const rpos = this.rotation.transform(coord).scale(this.size)
+      const point = Vector3.wsum(1, this.position, 1, rpos)
+      if (point.z > floorZ) return
+      const h = floorZ - point.z
+      const vEnergy = this.velocity.length() ** 2 / 2
+      const lossEnergy = -Gravity.z * h
+      this.position.z += h
+      const vscale = Math.sqrt(Math.max(1 - 2 * lossEnergy / this.velocity.length() ** 2, 0))
+      this.velocity = this.velocity.scale(vscale)
+      const wLossEnergy = lossEnergy - (vEnergy - this.velocity.length() ** 2 / 2)
+      const mscale = Math.sqrt(Math.max(1 - 2 * wLossEnergy / this.momentum.length() ** 2, 0))
+      this.momentum = this.momentum.scale(mscale)
+
+
+
+      this.velocity = this.velocity.scale(0.98)
+      this.momentum = this.momentum.scale(0.98)
+      const vel = Vector3.wsum(1, this.velocity, 1, Vector3.cross(this.momentum, rpos))
+      if (vel.z > 0) return
+      const F = vel.scale(-1)
+      F.x=F.y=0
+      const vz0 = vel.z
+      const vz1 = Vector3.wsum(1, F, 1, Vector3.cross(Vector3.cross(rpos, F), rpos)).z
+      const t = -1.8 * vz0 / vz1
+      this.velocity = Vector3.wsum(1, this.velocity, t, F)
+      this.momentum = Vector3.wsum(1, this.momentum, t, Vector3.cross(rpos, F))
+    })
   }
 
 
 
   render(ctx: CanvasRenderingContext2D) {
-    const coords = [...new Array(8)].map((_, i) =>
-      new Vector3(
-        ((i & 1) * 2 - 1),
-        (((i >> 1) & 1) * 2 - 1),
-        (((i >> 2) & 1) * 2 - 1)
-      )
-    )
-    ctx.beginPath()
-    coords.forEach(p => {
-      coords.forEach(q => {
+    ctx.save()
+    this.position.y = 0
+    Cube.coords.forEach(p => {
+      Cube.coords.forEach(q => {
         if (Vector3.distance(p, q) != 2) return
         const [tp, tq] = [p, q].map(
           point => Vector3.wsum(1, this.position, this.size, this.rotation.transform(point))
         )
+        const center = this.rotation.transform(Vector3.wsum(0.5, p, 0.5, q))
         const ps = 1 / (1 + 0.1 * tp.y)
         const qs = 1 / (1 + 0.1 * tq.y)
-        ctx.moveTo(tp.x * ps, tp.z * ps)
-        ctx.lineTo(tq.x * qs, tq.z * qs)
+        ctx.globalAlpha = 0.6 - 0.3 * center.y
+        ctx.beginPath()
+        ctx.moveTo(tp.x * ps, -tp.z * ps)
+        ctx.lineTo(tq.x * qs, -tq.z * qs)
+        ctx.stroke()
       })
     })
-    ctx.stroke()
+    ctx.restore()
   }
 }
 
@@ -160,18 +204,18 @@ function assignGlobal(data: Record<string, any>) {
 
 assignGlobal({ Matrix3, Vector3 })
 
-const cube = new Cube(new Vector3(0, 0, 0))
+const cube = new Cube(new Vector3(0, 0, 2))
 const ctx = canvas.getContext('2d')!
 setInterval(() => {
-  cube.update(0.1)
+  for(let i=0;i<10;i++)cube.update(0.01)
   ctx.clearRect(0, 0, SIZE, SIZE)
   ctx.save()
   ctx.translate(SIZE / 2, SIZE / 2)
-  ctx.lineWidth = 0.001
-  ctx.scale(SIZE / 4, SIZE / 4)
+  ctx.lineWidth = 0.004
+  ctx.scale(SIZE / 8, SIZE / 8)
   cube.render(ctx)
   ctx.restore()
-}, 100)
+}, 10)
 
 
 assignGlobal({ cube })
