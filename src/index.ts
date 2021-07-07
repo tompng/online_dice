@@ -41,6 +41,12 @@ class Vector3 {
   }
 }
 
+function vectorMinus(v: Vector3, n: number) {
+  const l = v.length()
+  if (l <= n) return new Vector3(0, 0, 0)
+  return v.scale((l - n) / l)
+}
+
 type Matrix3Element = [number, number, number, number, number, number, number, number, number]
 class Matrix3 {
   elements: Matrix3Element
@@ -99,11 +105,11 @@ class Matrix3 {
   }
 }
 
-function randomDirection() {
+function randomDirection(l = 1) {
   const z = 2 * Math.random() - 1
   const r = Math.sqrt(1 - z * z)
   const th = 2 * Math.PI * Math.random()
-  return new Vector3(r * Math.cos(th), r * Math.sin(th), z)
+  return new Vector3(l * r * Math.cos(th), l * r * Math.sin(th), l * z)
 }
 
 const Gravity = new Vector3(0, 0, -1)
@@ -126,7 +132,7 @@ class Cube {
     this.rotation = Matrix3.fromRotation(randomDirection(), 2 * Math.PI * Math.random())
     this.rotation = new Matrix3()//Matrix3.fromRotation(randomDirection(), 2 * Math.PI * Math.random())
     // this.velocity = randomDirection()
-    this.momentum = randomDirection()
+    this.momentum = randomDirection(4)
     this.velocity = new Vector3(0, 0, 0)
     // this.momentum = new Vector3(0, 0.8, 0)
   }
@@ -145,27 +151,35 @@ class Cube {
       const rpos = this.rotation.transform(coord).scale(this.size)
       const point = Vector3.wsum(1, this.position, 1, rpos)
       if (point.z > floorZ) return
+      this.velocity = vectorMinus(this.velocity, 0.002)
       const h = floorZ - point.z
       const vEnergy = this.velocity.length() ** 2 / 2
       const lossEnergy = -Gravity.z * h
       this.position.z += h
       const vscale = Math.sqrt(Math.max(1 - 2 * lossEnergy / this.velocity.length() ** 2, 0))
-      this.velocity = this.velocity.scale(vscale)
+      if (vscale < 1) this.velocity = this.velocity.scale(vscale)
       const wLossEnergy = lossEnergy - (vEnergy - this.velocity.length() ** 2 / 2)
       const mscale = Math.sqrt(Math.max(1 - 2 * wLossEnergy / this.momentum.length() ** 2, 0))
-      this.momentum = this.momentum.scale(mscale)
-
-
-
-      this.velocity = this.velocity.scale(0.98)
-      this.momentum = this.momentum.scale(0.98)
+      if (mscale < 1) this.momentum = this.momentum.scale(mscale)
       const vel = Vector3.wsum(1, this.velocity, 1, Vector3.cross(this.momentum, rpos))
       if (vel.z > 0) return
-      const F = vel.scale(-1)
-      F.x=F.y=0
-      const vz0 = vel.z
-      const vz1 = Vector3.wsum(1, F, 1, Vector3.cross(Vector3.cross(rpos, F), rpos)).z
-      const t = -1.8 * vz0 / vz1
+      const rxy = Math.hypot(vel.x, vel.y) || 1
+      const friction = 0.4
+      const Fz = new Vector3(0, 0, -vel.z)
+      const Fxy = new Vector3(friction * vel.z * vel.x / rxy, friction * vel.z * vel.y / rxy, 0)
+      const v0 = vel
+      const v1 = Vector3.wsum(1, Fz, 1, Vector3.cross(Vector3.cross(rpos, Fz), rpos))
+      // velocity = v0 + v1 * t
+      // position = v0.z * t + v1.z * t * t / 2
+      const t = - 1.5 * v0.z / v1.z
+      if (isNaN(t) || t <= 0) return
+      const a = Vector3.wsum(1, this.velocity, t, Fz)
+      const af = Fxy.scale(t)
+      const b = Vector3.wsum(1, this.momentum, t, Vector3.cross(rpos, Fz))
+      const bf = Vector3.cross(rpos, Fxy).scale(t)
+      const _f = - (Vector3.dot(a, af) + Vector3.dot(b, bf)) / (Vector3.dot(af, af) + Vector3.dot(bf, bf))
+      const f = _f < 0 ? 0 : _f < 1 ? _f : 1
+      const F = Vector3.wsum(1, Fz, f, Fxy)
       this.velocity = Vector3.wsum(1, this.velocity, t, F)
       this.momentum = Vector3.wsum(1, this.momentum, t, Vector3.cross(rpos, F))
     })
@@ -211,8 +225,8 @@ setInterval(() => {
   ctx.clearRect(0, 0, SIZE, SIZE)
   ctx.save()
   ctx.translate(SIZE / 2, SIZE / 2)
-  ctx.lineWidth = 0.004
-  ctx.scale(SIZE / 8, SIZE / 8)
+  ctx.lineWidth = 0.02
+  ctx.scale(SIZE / 16, SIZE / 16)
   cube.render(ctx)
   ctx.restore()
 }, 10)
