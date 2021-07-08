@@ -13,7 +13,8 @@
   "dependencies": {
     "@types/three": "*",
     "raw-loader": "*",
-    "three": "*"
+    "three": "*",
+    "dice_simulator": "./dice_simulator"
   },
   "private": true
 }

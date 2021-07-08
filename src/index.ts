@@ -1,5 +1,4 @@
-import { Vector3, Matrix3, randomDirection } from './vector'
-import { Cube } from './Cube'
+import { Cube, Vector3, Matrix3, randomDirection } from 'dice_simulator'
 const canvas = document.createElement('canvas')
 const SIZE = 512
 canvas.width = canvas.height = SIZE
