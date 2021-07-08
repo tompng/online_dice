@@ -1,0 +1,18 @@
+{
+  "scripts": {
+    "server": "ts-node app.ts"
+  },
+  "devDependencies": {
+    "typescript": "*",
+    "@types/node": "*",
+    "ts-node": "*"
+  },
+  "dependencies": {
+    "ws": "*",
+    "@types/ws": "*",
+    "express": "*",
+    "@types/express": "*",
+    "dice_simulator": "./dice_simulator"
+  },
+  "private": true
+}
