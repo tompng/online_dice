@@ -5,6 +5,7 @@
     "target": "es6",
     "module": "esnext",
     "moduleResolution": "node",
+    "types": [],
     "lib": [
       "esnext",
       "dom"

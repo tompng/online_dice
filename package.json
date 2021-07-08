@@ -1,14 +1,23 @@
 {
   "scripts": {
+    "build": "cd client && webpack",
+    "watch": "cd client && webpack -w",
     "server": "ts-node app.ts"
   },
   "devDependencies": {
+    "ts-loader": "*",
     "typescript": "*",
+    "url-loader": "*",
+    "raw-loader": "*",
     "@types/node": "*",
-    "ts-node": "*"
+    "ts-node": "*",
+    "webpack": "*",
+    "webpack-cli": "*"
   },
   "dependencies": {
     "ws": "*",
+    "three": "*",
+    "@types/three": "*",
     "@types/ws": "*",
     "express": "*",
     "@types/express": "*",
