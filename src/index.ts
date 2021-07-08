@@ -138,8 +138,8 @@ class Cube {
   }
 
   update(dt: number) {
-    this.position = Vector3.wsum(1, this.position, dt , this.velocity)
     this.velocity = Vector3.wsum(1, this.velocity, dt, Gravity)
+    this.position = Vector3.wsum(1, this.position, dt , this.velocity)
     const w = Matrix3.fromRotation(this.momentum, this.momentum.length() * dt)
     this.rotation = w.mult(this.rotation)
     this.hitFloor()
@@ -158,23 +158,23 @@ class Cube {
       const rpos = this.rotation.transform(coord).scale(this.size)
       const point = Vector3.wsum(1, this.position, 1, rpos)
       if (point.z > floorZ) return
+      const h = floorZ - point.z
+      this.position.z += h
       if (faceDown) {
         this.velocity = vectorMinus(this.velocity, 0.002)
         this.momentum = vectorMinus(this.momentum, 0.002)
+        const vEnergy = this.velocity.length() ** 2 / 2
+        const lossEnergy = -Gravity.z * h
+        const vscale = Math.sqrt(Math.max(1 - 2 * lossEnergy / this.velocity.length() ** 2, 0))
+        if (vscale < 1) this.velocity = this.velocity.scale(vscale)
+        const wLossEnergy = lossEnergy - (vEnergy - this.velocity.length() ** 2 / 2)
+        const mscale = Math.sqrt(Math.max(1 - 2 * wLossEnergy / this.momentum.length() ** 2, 0))
+        if (mscale < 1) this.momentum = this.momentum.scale(mscale)
       }
-      const h = floorZ - point.z
-      const vEnergy = this.velocity.length() ** 2 / 2
-      const lossEnergy = -Gravity.z * h
-      this.position.z += h
-      const vscale = Math.sqrt(Math.max(1 - 2 * lossEnergy / this.velocity.length() ** 2, 0))
-      if (vscale < 1) this.velocity = this.velocity.scale(vscale)
-      const wLossEnergy = lossEnergy - (vEnergy - this.velocity.length() ** 2 / 2)
-      const mscale = Math.sqrt(Math.max(1 - 2 * wLossEnergy / this.momentum.length() ** 2, 0))
-      if (mscale < 1) this.momentum = this.momentum.scale(mscale)
       const vel = Vector3.wsum(1, this.velocity, 1, Vector3.cross(this.momentum, rpos))
       if (vel.z > 0) return
       const rxy = Math.hypot(vel.x, vel.y) || 1
-      const friction = 0.4
+      const friction = 0.5
       const Fz = new Vector3(0, 0, -vel.z)
       const Fxy = new Vector3(friction * vel.z * vel.x / rxy, friction * vel.z * vel.y / rxy, 0)
       const v0 = vel
@@ -194,8 +194,6 @@ class Cube {
       this.momentum = Vector3.wsum(1, this.momentum, t, Vector3.cross(rpos, F))
     })
   }
-
-
 
   render(ctx: CanvasRenderingContext2D) {
     ctx.save()
@@ -226,12 +224,12 @@ function assignGlobal(data: Record<string, any>) {
   }
 }
 
-assignGlobal({ Matrix3, Vector3 })
+assignGlobal({ Matrix3, Vector3, Cube })
 
 const cube = new Cube(new Vector3(0, 0, 4))
 const ctx = canvas.getContext('2d')!
 setInterval(() => {
-  for(let i=0;i<10;i++)cube.update(0.01)
+  cube.update(0.1)
   ctx.clearRect(0, 0, SIZE, SIZE)
   ctx.save()
   ctx.translate(SIZE / 2, SIZE / 2)
@@ -241,5 +239,8 @@ setInterval(() => {
   ctx.restore()
 }, 10)
 
-
 assignGlobal({ cube })
+document.onclick = () => {
+  cube.position = new Vector3(0, 0, 4)
+  cube.momentum = randomDirection(4)
+}
