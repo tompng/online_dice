@@ -1,5 +1,3 @@
-import { CompressedTexture } from "three"
-
 const canvas = document.createElement('canvas')
 const SIZE = 512
 canvas.width = canvas.height = SIZE
@@ -136,11 +134,10 @@ class Cube {
   constructor(position: Vector3) {
     this.position = position
     this.rotation = Matrix3.fromRotation(randomDirection(), 2 * Math.PI * Math.random())
-    this.rotation = new Matrix3()//Matrix3.fromRotation(randomDirection(), 2 * Math.PI * Math.random())
-    // this.velocity = randomDirection()
+    this.rotation = Matrix3.fromRotation(randomDirection(), 2 * Math.PI * Math.random())
+    this.velocity = randomDirection()
     this.momentum = randomDirection(4)
     this.velocity = new Vector3(0, 0, 0)
-    // this.momentum = new Vector3(0, 0.8, 0)
   }
 
   update(dt: number) {
