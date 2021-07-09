@@ -1,36 +1,45 @@
-import { DiceSimulator, Cube, Matrix3, Vector3, SimulatorState } from 'dice_simulator'
-const canvas = document.createElement('canvas')
-const SIZE = 512
-canvas.width = canvas.height = SIZE
-document.body.appendChild(canvas)
+import { DiceSimulator, Cube, Matrix3, Vector3 } from 'dice_simulator'
+import * as THREE from 'three'
 
-type CubeRenderingData = {
-  position: Vector3
-  rotation: Matrix3
-  size: number
-}
-function renderCube(cube: CubeRenderingData, ctx: CanvasRenderingContext2D) {
-  const { position, rotation, size } = cube
-  ctx.save()
-  Cube.coords.forEach(p => {
-    Cube.coords.forEach(q => {
-      if (Vector3.distance(p, q) != 2) return
-      const [tp, tq] = [p, q].map(
-        point => Vector3.add(position, rotation.transform(point).scale(size))
-      )
-      const center = rotation.transform(Vector3.add(p, q).scale(0.5))
-      const ps = 1 / (1 + 0.02 * tp.y)
-      const qs = 1 / (1 + 0.02 * tq.y)
-      ctx.globalAlpha = 0.6 - 0.3 * center.y
-      ctx.beginPath()
-      const tz = -6
-      ctx.moveTo(tp.x * ps, -(tp.z + tz) * ps)
-      ctx.lineTo(tq.x * qs, -(tq.z + tz)* qs)
-      ctx.stroke()
-    })
-  })
-  ctx.restore()
-}
+const scene = new THREE.Scene()
+const renderer = new THREE.WebGLRenderer()
+renderer.setSize(window.innerWidth, window.innerHeight)
+document.body.appendChild(renderer.domElement)
+
+const ambientLight = new THREE.AmbientLight(0x222222)
+const light = new THREE.DirectionalLight(0xFFFFFF)
+light.position.set(10, 10, 30)
+light.castShadow = true
+light.shadow.mapSize.width = 1024
+light.shadow.mapSize.height = 1024
+light.shadow.camera.near = 0.2
+light.shadow.camera.far = 40
+light.shadow.camera.left = -10
+light.shadow.camera.right = +10
+light.shadow.camera.bottom = -10
+light.shadow.camera.top = +10
+scene.add(light, ambientLight)
+const plane = new THREE.Mesh(new THREE.PlaneBufferGeometry(), new THREE.MeshPhongMaterial({ color: 'red' }))
+plane.receiveShadow = true
+scene.add(plane)
+plane.scale.x = 10
+plane.scale.y = 10
+plane.scale.z = 10
+const cubeGeometry = new THREE.BoxBufferGeometry(2, 2, 2)
+const cubeMaterial = new THREE.MeshPhongMaterial({ color: 'blue' })
+const cubeMesh1 = new THREE.Mesh(cubeGeometry, cubeMaterial)
+const cubeMesh2 = new THREE.Mesh(cubeGeometry, cubeMaterial)
+scene.add(cubeMesh1, cubeMesh2)
+cubeMesh1.castShadow = true
+cubeMesh2.castShadow = true
+cubeMesh1.receiveShadow = true
+cubeMesh2.receiveShadow = true
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100)
+camera.position.z = 20
+camera.position.y = -3
+camera.lookAt(0, 0, 0)
+renderer.shadowMap.enabled = true
+renderer.render(scene, camera)
 
 function assignGlobal(data: Record<string, any>) {
   for (const key in data) {
@@ -38,24 +47,28 @@ function assignGlobal(data: Record<string, any>) {
   }
 }
 
-assignGlobal({ Vector3, Matrix3, Cube })
-
 const simulator = new DiceSimulator()
-let lastActionTime = 0
-const ctx = canvas.getContext('2d')!
 
 setInterval(() => {
   simulator.update()
-  ctx.clearRect(0, 0, SIZE, SIZE)
-  ctx.save()
-  ctx.translate(SIZE / 2, SIZE / 2)
-  ctx.lineWidth = 0.02
-  ctx.scale(SIZE / 16, SIZE / 16)
-  simulator.cubes.forEach(c => renderCube(c, ctx))
-  ctx.restore()
+  ;[cubeMesh1, cubeMesh2].forEach((mesh, i) => {
+    const { position, rotation } = simulator.cubes[i]
+    mesh.position.x = position.x
+    mesh.position.y = position.y
+    mesh.position.z = position.z
+    const e = rotation.elements
+    const matrix = new THREE.Matrix4()
+    matrix.set(
+      e[0], e[1], e[2], 0,
+      e[3], e[4], e[5], 0,
+      e[6], e[7], e[8], 0,
+      0, 0, 0, 1
+    )
+    mesh.rotation.setFromRotationMatrix(matrix)
+  })
+  renderer.render(scene, camera)
 }, 16)
 
-assignGlobal({ simulator })
 let clientId = Math.random()
 document.onclick = () => {
   const anonymous = !simulator.stopped
@@ -63,7 +76,6 @@ document.onclick = () => {
   const position = { x: cube.position.x * 1.1, y: cube.position.y * 1.1 }
   if (!anonymous) simulator.tapPosition(position)
   const data = { type: 'tap', position, clientId: anonymous ? undefined : clientId }
-  lastActionTime = performance.now()
   ws.send(JSON.stringify(data))
 }
 
@@ -75,4 +87,11 @@ ws.onmessage = e => {
     simulator.replaceState(data)
   }
 }
-assignGlobal({ ws })
+
+assignGlobal({
+  Vector3, Matrix3,
+  cubeMesh1,
+  cubeMesh2,
+  simulator,
+  ws
+})

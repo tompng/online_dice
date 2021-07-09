@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "cd client && webpack",
+    "build": "cd client && webpack --mode=production",
     "watch": "cd client && webpack -w",
     "server": "ts-node app.ts"
   },
