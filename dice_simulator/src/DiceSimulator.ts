@@ -28,7 +28,7 @@ export class DiceSimulator {
       const dir = new Vector3(diff.x / 4, diff.y / 4, diff.z).normalize()
       const power = 4 * Math.exp(-len * len / 4)
       c.velocity = Vector3.add(c.velocity, dir.scale(power))
-      c.momentum = Vector3.add(c.momentum, randomDirection().scale(power))
+      c.momentum = Vector3.add(c.momentum, randomDirection(power, pos2d.x + pos2d.y + len))
     })
   }
 

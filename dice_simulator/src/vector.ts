@@ -98,6 +98,25 @@ export class Matrix3 {
       zx - ny * sin, yz + nx * sin, nz * nz * cc + cos
     ])
   }
+  static mixRotation(m1: Matrix3, m2: Matrix3, t: number) {
+    const axises = [
+      new Vector3(1, 0, 0),
+      new Vector3(0, 1, 0),
+      new Vector3(0, 0, 1)
+    ]
+    const diffs = axises.map(axis => Vector3.sub(m1.transform(axis), m2.transform(axis)))
+    const axisCandidates = [Vector3.cross(diffs[0], diffs[1]), Vector3.cross(diffs[1], diffs[2]), Vector3.cross(diffs[2], diffs[0])]
+    const rotateAxis = axisCandidates.sort((a, b) => b.length() - a.length())[0].normalize()
+    const axis = axises.map(axis => [Math.abs(Vector3.dot(m1.transform(axis), rotateAxis)), axis] as const).sort((a, b) => a[0] - b[0])[0][1]
+    const [from, to] = [m1, m2].map(m => {
+      const v = m.transform(axis)
+      return Vector3.sub(v, rotateAxis.scale(Vector3.dot(rotateAxis, v))).normalize()
+    })
+    if (Math.max(...diffs.map(d => d.length())) < 0.001) return m1
+    const dir = Vector3.dot(Vector3.cross(from, to), rotateAxis)
+    const theta = Math.acos(Vector3.dot(from, to)) * (dir > 0 ? 1 : -1)
+    return Matrix3.fromRotation(rotateAxis, theta * t).mult(m1)
+  }
 }
 
 function randomBySeed(seed: number) {
