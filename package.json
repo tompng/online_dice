@@ -15,10 +15,10 @@
     "webpack-cli": "*"
   },
   "dependencies": {
-    "ws": "*",
+    "express-ws": "*",
+    "@types/express-ws": "*",
     "three": "*",
     "@types/three": "*",
-    "@types/ws": "*",
     "express": "*",
     "@types/express": "*",
     "dice_simulator": "./dice_simulator"

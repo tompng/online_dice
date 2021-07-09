@@ -100,9 +100,15 @@ export class Matrix3 {
   }
 }
 
-export function randomDirection(l = 1) {
-  const z = 2 * Math.random() - 1
+function randomBySeed(seed: number) {
+  return Math.cos(seed * 1000) * 1000 % 0.5 + 0.5
+}
+
+export function randomDirection(l = 1, seed?: number) {
+  const rand1 = seed != null ? randomBySeed(seed + 1) : Math.random()
+  const rand2 = seed != null ? randomBySeed(seed + 2) : Math.random()
+  const z = 2 * rand1 - 1
   const r = Math.sqrt(1 - z * z)
-  const th = 2 * Math.PI * Math.random()
+  const th = 2 * Math.PI * rand2
   return new Vector3(l * r * Math.cos(th), l * r * Math.sin(th), l * z)
 }

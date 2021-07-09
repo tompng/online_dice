@@ -36,13 +36,15 @@ function assignGlobal(data: Record<string, any>) {
 
 assignGlobal({ Matrix3, Vector3, Cube })
 
-const cube = new Cube(new Vector3(0, 0, 9))
-const cube2 = new Cube(new Vector3(0, 0, 6))
+const cubes = [
+  new Cube(new Vector3(0, 0, 9)),
+  new Cube(new Vector3(0, 0, 6))
+]
 const ctx = canvas.getContext('2d')!
 setInterval(() => {
-  Cube.hit(cube, cube2)
+  Cube.hit(cubes[0], cubes[1])
   ctx.clearRect(0, 0, SIZE, SIZE)
-  ;[cube, cube2].forEach(c => {
+  cubes.forEach(c => {
     c.update(0.1)
     ctx.save()
     ctx.translate(SIZE / 2, SIZE / 2)
@@ -53,12 +55,25 @@ setInterval(() => {
   })
 }, 10)
 
-assignGlobal({ cube })
+assignGlobal({ cubes })
 document.onclick = () => {
-  cube.position = new Vector3(0, 0, 9)
-  cube.momentum = randomDirection(4)
-  cube2.position = new Vector3(0, 0, 6)
-  cube2.momentum = randomDirection(4)
-  cube.velocity = new Vector3(0, 0, 0)
-  cube2.velocity = new Vector3(0, 0, 0)
+  const cube = cubes[Math.floor(cubes.length * Math.random())]
+  const data = {
+    type: 'tap',
+    position: { x: cube.position.x * 1.1, y: cube.position.y * 1.1 }
+  }
+  ws.send(JSON.stringify(data))
 }
+
+const ws = new WebSocket('ws://localhost:8080/ws')
+ws.onmessage = e => {
+  const data = JSON.parse(e.data as string)
+  cubes.forEach((c, i) => {
+    const { p, v, r, m } = data[i]
+    c.position = new Vector3(p.x, p.y, p.z)
+    c.velocity = new Vector3(v.x, v.y, v.z)
+    c.rotation = new Matrix3(r)
+    c.momentum = new Vector3(m.x, m.y, m.z)
+  })
+}
+assignGlobal({ ws })

@@ -106,8 +106,10 @@ export class Cube {
       if (dot < 0) {
         a.velocity = Vector3.add(a.velocity, dir.scale(-dot))
         b.velocity = Vector3.add(b.velocity, dir.scale(dot))
-        a.momentum = Vector3.add(a.momentum, randomDirection())
-        b.momentum = Vector3.add(b.momentum, randomDirection())
+        const seed1 = a.position.x + a.position.y + a.position.z
+        const seed2 = b.position.x + b.position.y + b.position.z
+        a.momentum = Vector3.add(a.momentum, randomDirection(1, seed1 + 2 * seed2))
+        b.momentum = Vector3.add(b.momentum, randomDirection(1, seed1 * 2 + seed2))
       }
     }
   }
