@@ -4,7 +4,12 @@ const SIZE = 512
 canvas.width = canvas.height = SIZE
 document.body.appendChild(canvas)
 
-function renderCube(cube: Cube, ctx: CanvasRenderingContext2D) {
+type CubeRenderingData = {
+  position: Vector3
+  rotation: Matrix3
+  size: number
+}
+function renderCube(cube: CubeRenderingData, ctx: CanvasRenderingContext2D) {
   const { position, rotation, size } = cube
   ctx.save()
   Cube.coords.forEach(p => {
@@ -33,11 +38,12 @@ function assignGlobal(data: Record<string, any>) {
   }
 }
 
-assignGlobal({ Vector3, Cube })
+assignGlobal({ Vector3, Matrix3, Cube })
 
 const simulator = new DiceSimulator()
-
+let lastActionTime = 0
 const ctx = canvas.getContext('2d')!
+
 setInterval(() => {
   simulator.update()
   ctx.clearRect(0, 0, SIZE, SIZE)
@@ -50,18 +56,23 @@ setInterval(() => {
 }, 16)
 
 assignGlobal({ simulator })
+let clientId = Math.random()
 document.onclick = () => {
+  const anonymous = !simulator.stopped
   const cube = simulator.cubes[Math.floor(simulator.cubes.length * Math.random())]
-  const data = {
-    type: 'tap',
-    position: { x: cube.position.x * 1.1, y: cube.position.y * 1.1 }
-  }
+  const position = { x: cube.position.x * 1.1, y: cube.position.y * 1.1 }
+  if (!anonymous) simulator.tapPosition(position)
+  const data = { type: 'tap', position, clientId: anonymous ? undefined : clientId }
+  lastActionTime = performance.now()
   ws.send(JSON.stringify(data))
 }
 
 const ws = new WebSocket('ws://localhost:8080/ws')
 ws.onmessage = e => {
   const data = JSON.parse(e.data as string)
-  simulator.replaceState(data)
+  if (data.action.type === 'init') simulator.replaceState(data)
+  else if (data.action.type === 'tap' && data.action.clientId !== clientId) {
+    simulator.replaceState(data)
+  }
 }
 assignGlobal({ ws })

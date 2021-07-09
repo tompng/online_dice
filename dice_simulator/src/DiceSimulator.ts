@@ -19,8 +19,10 @@ export class DiceSimulator {
     new Cube(new Vector3(0, 0, 6))
   ]
   frame = 0
+  stopped = false
 
   tapPosition(pos2d: Point2D) {
+    this.stopped = false
     const position = new Vector3(pos2d.x, pos2d.y, 0)
     this.cubes.forEach(c => {
       const diff = Vector3.sub(c.position, position)
@@ -48,6 +50,7 @@ export class DiceSimulator {
 
   replaceState(state: SimulatorState) {
     this.frame = state.frame
+    this.stopped = false
     this.cubes = state.cubes.map(({ p, v, r, m }) => {
       const cube = new Cube(new Vector3(p.x, p.y, p.z))
       cube.velocity = new Vector3(v.x, v.y, v.z)
@@ -59,13 +62,13 @@ export class DiceSimulator {
 
   update() {
     this.frame += 1
+    if (this.stopped) return
     this.cubes.forEach(c1 => {
       this.cubes.forEach(c2 => {
         if (c1 !== c2) Cube.hit(c1, c2)
       })
     })
-    this.cubes.forEach(c => {
-      c.update(0.1)
-    })
+    const movingState = this.cubes.map(c => c.update(0.15))
+    this.stopped = movingState.every(m => !m)
   }
 }

@@ -19,11 +19,11 @@ const connections = new Set<WebSocket>()
 
 const simulator = new DiceSimulator()
 
-function handleTap(pos2d: Point2D) {
-  simulator.tapPosition(pos2d)
+function handleTap(action: { type: 'tap', position: Point2D }) {
+  simulator.tapPosition(action.position)
   const json = JSON.stringify({
     ...simulator.currentState(),
-    action: { type: 'tap', position: pos2d }
+    action,
   })
   connections.forEach(ws => {
     ws.send(json)
@@ -44,7 +44,7 @@ app.ws('/ws', (ws, req) => {
     setTimeout(() => {
       const data = JSON.parse(message as string) as Message
       if (data.type === 'tap') {
-        handleTap(data.position)
+        handleTap(data)
       }
     }, 200)
   })

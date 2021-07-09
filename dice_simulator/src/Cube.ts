@@ -31,11 +31,17 @@ export class Cube {
   }
 
   update(dt: number) {
+    if (this.isFaceDown() && this.position.z < this.size * 1.1) {
+      const vlen = this.velocity.length()
+      const mlen = this.velocity.length()
+      if (vlen + mlen < 0.001) return false
+    }
     this.velocity = Vector3.add(this.velocity, Gravity.scale(dt))
     this.position = Vector3.add(this.position, this.velocity.scale(dt))
     const w = Matrix3.fromRotation(this.momentum, this.momentum.length() * dt)
     this.rotation = w.mult(this.rotation)
     this.hitFloor()
+    return true
   }
 
   static faces = [
@@ -43,9 +49,14 @@ export class Cube {
     new Vector3(0, -1, 0), new Vector3(0, 1, 0),
     new Vector3(0, 0, -1), new Vector3(0, 0, 1)
   ]
+
+  isFaceDown() {
+    return Cube.faces.some(n => this.rotation.transform(n).z > 0.999)
+  }
+
   hitFloor() {
     const floorZ = 0
-    const faceDown = Cube.faces.some(n => this.rotation.transform(n).z > 0.999)
+    const faceDown = this.isFaceDown()
 
     Cube.coords.forEach(coord => {
       const rpos = this.rotation.transform(coord).scale(this.size)
@@ -54,8 +65,8 @@ export class Cube {
       const h = floorZ - point.z
       this.position.z += h
       if (faceDown) {
-        this.velocity = vectorMinus(this.velocity, 0.002)
-        this.momentum = vectorMinus(this.momentum, 0.002)
+        this.velocity = vectorMinus(this.velocity, 0.001)
+        this.momentum = vectorMinus(this.momentum, 0.001)
         const vEnergy = this.velocity.length() ** 2 / 2
         const lossEnergy = -Gravity.z * h
         const vscale = Math.sqrt(Math.max(1 - 2 * lossEnergy / this.velocity.length() ** 2, 0))
