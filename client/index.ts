@@ -70,10 +70,20 @@ setInterval(() => {
 
 const clientId = Math.random()
 let prevActionState: any = null
-document.onclick = () => {
+document.onclick = (e) => {
+  const raycaster = new THREE.Raycaster()
+  raycaster.setFromCamera({
+    x: (e.pageX - renderer.domElement.offsetLeft) / renderer.domElement.offsetWidth * 2 - 1,
+    y: 1 - 2 * (e.pageY - renderer.domElement.offsetTop) / renderer.domElement.offsetHeight
+  }, camera)
+  const { origin, direction } = raycaster.ray
+  const t = -origin.z / direction.z
+  const x = origin.x + t * direction.x
+  const y = origin.y + t * direction.y
+
+  const position = { x, y }
+  if (!simulator.hasTapTargetCube(position)) return
   const anonymous = !simulator.stopped
-  const cube = simulator.cubes[Math.floor(simulator.cubes.length * Math.random())]
-  const position = { x: cube.position.x * 1.1, y: cube.position.y * 1.1 }
   if (!anonymous) simulator.tapPosition(position)
   prevActionState = simulator.currentState()
   const data = { type: 'tap', position, clientId: anonymous ? undefined : clientId }

@@ -20,6 +20,7 @@ const connections = new Set<WebSocket>()
 const simulator = new DiceSimulator()
 
 function handleTap(action: { type: 'tap', position: Point2D }) {
+  if (!simulator.hasTapTargetCube(action.position)) return
   simulator.tapPosition(action.position)
   const json = JSON.stringify({
     ...simulator.currentState(),

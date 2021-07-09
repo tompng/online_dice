@@ -23,17 +23,27 @@ export class DiceSimulator {
   frame = 0
   stopped = false
 
+  maxTapTargetDistance = 4
+  hasTapTargetCube(pos2d: Point2D) {
+    const position = new Vector3(pos2d.x, pos2d.y, 0)
+    for (const c of this.cubes) {
+      const diff = Vector3.sub(c.position, position)
+      const len = diff.length()
+      if (len < this.maxTapTargetDistance) return true
+    }
+    return false
+  }
   tapPosition(pos2d: Point2D) {
     this.stopped = false
     const position = new Vector3(pos2d.x, pos2d.y, 0)
-    this.cubes.forEach(c => {
+    for (const c of this.cubes) {
       const diff = Vector3.sub(c.position, position)
       const len = diff.length()
-      const dir = new Vector3(diff.x / 4, diff.y / 4, diff.z).normalize()
-      const power = 4 * Math.exp(-len * len / 4)
-      c.velocity = Vector3.add(c.velocity, dir.scale(power))
+      if (len >= this.maxTapTargetDistance) continue
+      const power = 3 - len * len / 8
+      c.velocity = Vector3.add(c.velocity, Vector3.add(new Vector3(0, 0, power), randomDirection(power / 4, pos2d.x + pos2d.y - len)))
       c.momentum = Vector3.add(c.momentum, randomDirection(power, pos2d.x + pos2d.y + len))
-    })
+    }
   }
 
   currentState(): SimulatorState {
