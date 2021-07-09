@@ -1,4 +1,4 @@
-import { Cube, Vector3, Matrix3, randomDirection } from 'dice_simulator'
+import { DiceSimulator, Cube, Matrix3, Vector3, SimulatorState } from 'dice_simulator'
 const canvas = document.createElement('canvas')
 const SIZE = 512
 canvas.width = canvas.height = SIZE
@@ -27,37 +27,31 @@ function renderCube(cube: Cube, ctx: CanvasRenderingContext2D) {
   ctx.restore()
 }
 
-
 function assignGlobal(data: Record<string, any>) {
   for (const key in data) {
     ;(window as any)[key] = data[key]
   }
 }
 
-assignGlobal({ Matrix3, Vector3, Cube })
+assignGlobal({ Vector3, Cube })
 
-const cubes = [
-  new Cube(new Vector3(0, 0, 9)),
-  new Cube(new Vector3(0, 0, 6))
-]
+const simulator = new DiceSimulator()
+
 const ctx = canvas.getContext('2d')!
 setInterval(() => {
-  Cube.hit(cubes[0], cubes[1])
+  simulator.update()
   ctx.clearRect(0, 0, SIZE, SIZE)
-  cubes.forEach(c => {
-    c.update(0.1)
-    ctx.save()
-    ctx.translate(SIZE / 2, SIZE / 2)
-    ctx.lineWidth = 0.02
-    ctx.scale(SIZE / 16, SIZE / 16)
-    renderCube(c, ctx)
-    ctx.restore()
-  })
-}, 10)
+  ctx.save()
+  ctx.translate(SIZE / 2, SIZE / 2)
+  ctx.lineWidth = 0.02
+  ctx.scale(SIZE / 16, SIZE / 16)
+  simulator.cubes.forEach(c => renderCube(c, ctx))
+  ctx.restore()
+}, 16)
 
-assignGlobal({ cubes })
+assignGlobal({ simulator })
 document.onclick = () => {
-  const cube = cubes[Math.floor(cubes.length * Math.random())]
+  const cube = simulator.cubes[Math.floor(simulator.cubes.length * Math.random())]
   const data = {
     type: 'tap',
     position: { x: cube.position.x * 1.1, y: cube.position.y * 1.1 }
@@ -68,12 +62,6 @@ document.onclick = () => {
 const ws = new WebSocket('ws://localhost:8080/ws')
 ws.onmessage = e => {
   const data = JSON.parse(e.data as string)
-  cubes.forEach((c, i) => {
-    const { p, v, r, m } = data[i]
-    c.position = new Vector3(p.x, p.y, p.z)
-    c.velocity = new Vector3(v.x, v.y, v.z)
-    c.rotation = new Matrix3(r)
-    c.momentum = new Vector3(m.x, m.y, m.z)
-  })
+  simulator.replaceState(data)
 }
 assignGlobal({ ws })
