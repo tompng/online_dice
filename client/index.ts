@@ -2,6 +2,7 @@ import { DiceSimulator, SimulatorState, Matrix3, Vector3 } from 'dice_simulator'
 import * as THREE from 'three'
 
 const simulator = new DiceSimulator()
+let appearance: (string[] | null)[] = []
 
 const scene = new THREE.Scene()
 const renderer = new THREE.WebGLRenderer()
@@ -28,13 +29,13 @@ plane.scale.x = 2 * simulator.xWall
 plane.scale.y = 2 * simulator.yWall
 const cubeGeometry = new THREE.BoxBufferGeometry(2, 2, 2)
 const cubeMaterial = new THREE.MeshPhongMaterial({ color: 'blue' })
-const cubeMesh1 = new THREE.Mesh(cubeGeometry, cubeMaterial)
-const cubeMesh2 = new THREE.Mesh(cubeGeometry, cubeMaterial)
-scene.add(cubeMesh1, cubeMesh2)
-cubeMesh1.castShadow = true
-cubeMesh2.castShadow = true
-cubeMesh1.receiveShadow = true
-cubeMesh2.receiveShadow = true
+const cubeMeshes = [...new Array(6)].map(() => {
+  const mesh = new THREE.Mesh(cubeGeometry, cubeMaterial)
+  scene.add(mesh)
+  mesh.castShadow = true
+  mesh.receiveShadow = true
+  return mesh
+})
 const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100)
 camera.position.z = 20
 camera.position.y = -3
@@ -50,8 +51,14 @@ function assignGlobal(data: Record<string, any>) {
 
 setInterval(() => {
   simulator.update()
-  ;[cubeMesh1, cubeMesh2].forEach((mesh, i) => {
-    const { position, rotation } = simulator.cubes[i]
+  cubeMeshes.forEach((mesh, i) => {
+    const cube = simulator.cubes[i]
+    if (cube.hidden) {
+      mesh.visible = false
+      return
+    }
+    mesh.visible = true
+    const { position, rotation } = cube
     mesh.position.x = position.x
     mesh.position.y = position.y
     mesh.position.z = position.z
@@ -96,6 +103,8 @@ function compareCubePosition(state1: SimulatorState, state2: SimulatorState) {
   for (let i = 0; i < size; i++) {
     const cube1 = state1.cubes[i]
     const cube2 = state2.cubes[i]
+    if (cube1 == null && cube2 == null) continue
+    if (cube1 == null || cube2 == null) return false
     ;([[cube1.p, cube2.p], [cube1.v, cube2.v], [cube1.m, cube2.m]] as const).forEach(([a, b]) => {
       diff = Math.max(diff, Math.abs(a.x - b.x), Math.abs(a.y - b.y), Math.abs(a.z - b.z))
     })
@@ -108,22 +117,34 @@ function compareCubePosition(state1: SimulatorState, state2: SimulatorState) {
 const wsurl = `${location.protocol === 'https' ? 'wss' : 'ws'}://${location.host}/ws`
 const ws = new WebSocket(wsurl)
 type DiceAction = {
-  action: { type: string; clientId?: number }
+  type: 'init'
+  cubes: SimulatorState['cubes']
+  appearance: (string[] | null)[]
+} | {
+  type: 'cubes'
+  clientId?: number
+  cubes: SimulatorState['cubes']
+} | {
+  type: 'appearance'
+  appearance: (string[] | null)[]
 }
 ws.onmessage = e => {
   const data = JSON.parse(e.data as string) as SimulatorState & DiceAction
-  if (data.action.type === 'init') simulator.replaceState(data)
-  else if (data.action.type === 'tap') {
-    if (data.action.clientId !== clientId || !compareCubePosition(data, prevActionState)) {
+  if (data.type === 'init') {
+    simulator.replaceState(data)
+    appearance = data.appearance
+  } else if (data.type === 'cubes') {
+    if (data.clientId !== clientId || !compareCubePosition(data, prevActionState)) {
       simulator.replaceState(data)
     }
+  } else if (data.type === 'appearance') {
+    appearance = data.appearance
   }
 }
 
 assignGlobal({
   Vector3, Matrix3,
-  cubeMesh1,
-  cubeMesh2,
+  cubeMeshes,
   simulator,
   ws
 })

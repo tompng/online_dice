@@ -14,6 +14,7 @@ export class Cube {
   rotation: Matrix3
   momentum: Vector3
   size = 1
+  hidden = false
   static coords = [...new Array(8)].map((_, i) =>
     new Vector3(
       ((i & 1) * 2 - 1),
@@ -31,6 +32,7 @@ export class Cube {
   }
 
   update(dt: number, xwall: number, ywall: number) {
+    if (this.hidden) return false
     if (this.isFaceDown() && this.position.z < this.size * 1.1) {
       const vlen = this.velocity.length()
       const mlen = this.velocity.length()
