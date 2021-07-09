@@ -18,6 +18,8 @@ export class DiceSimulator {
     new Cube(new Vector3(0, 0, 9)),
     new Cube(new Vector3(0, 0, 6))
   ]
+  xWall = 9
+  yWall = 6
   frame = 0
   stopped = false
 
@@ -68,7 +70,7 @@ export class DiceSimulator {
         if (c1 !== c2) Cube.hit(c1, c2)
       })
     })
-    const movingState = this.cubes.map(c => c.update(0.15))
+    const movingState = this.cubes.map(c => c.update(0.15, this.xWall, this.yWall))
     this.stopped = movingState.every(m => !m)
   }
 }

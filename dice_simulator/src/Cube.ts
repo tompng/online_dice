@@ -30,7 +30,7 @@ export class Cube {
     this.velocity = new Vector3(0, 0, 0)
   }
 
-  update(dt: number) {
+  update(dt: number, xwall: number, ywall: number) {
     if (this.isFaceDown() && this.position.z < this.size * 1.1) {
       const vlen = this.velocity.length()
       const mlen = this.velocity.length()
@@ -40,7 +40,7 @@ export class Cube {
     this.position = Vector3.add(this.position, this.velocity.scale(dt))
     const w = Matrix3.fromRotation(this.momentum, this.momentum.length() * dt)
     this.rotation = w.mult(this.rotation)
-    this.hitFloor()
+    this.hitWalls(xwall, ywall)
     return true
   }
 
@@ -54,17 +54,23 @@ export class Cube {
     return Cube.faces.some(n => this.rotation.transform(n).z > 0.999)
   }
 
-  hitFloor() {
-    const floorZ = 0
+  hitWalls(xwall: number, ywall: number) {
     const faceDown = this.isFaceDown()
-
+    this.hitWall(new Vector3(1, 0, 0), -xwall)
+    this.hitWall(new Vector3(-1, 0, 0), -xwall)
+    this.hitWall(new Vector3(0, 1, 0), -ywall)
+    this.hitWall(new Vector3(0, -1, 0), -ywall)
+    this.hitWall(new Vector3(0, 0, 1), 0, faceDown)
+  }
+  hitWall(dir: Vector3, dirdot: number, floorDecay: boolean = false) {
     Cube.coords.forEach(coord => {
       const rpos = this.rotation.transform(coord).scale(this.size)
       const point = Vector3.add(this.position, rpos)
-      if (point.z > floorZ) return
-      const h = floorZ - point.z
-      this.position.z += h
-      if (faceDown) {
+      const depth = Vector3.dot(point, dir) - dirdot
+      if (depth > 0) return
+      this.position = Vector3.sub(this.position, dir.scale(depth))
+      if (floorDecay) {
+        const h = -depth
         this.velocity = vectorMinus(this.velocity, 0.001)
         this.momentum = vectorMinus(this.momentum, 0.001)
         const vEnergy = this.velocity.length() ** 2 / 2
@@ -76,7 +82,7 @@ export class Cube {
         if (mscale < 1) this.momentum = this.momentum.scale(mscale)
       }
       const vel = Vector3.add(this.velocity, Vector3.cross(this.momentum, rpos))
-      if (vel.z > 0) return
+      if (Vector3.dot(vel, dir) > 0) return
       const rxy = Math.hypot(vel.x, vel.y) || 1
       const friction = 0.5
       const Fz = new Vector3(0, 0, -vel.z)
